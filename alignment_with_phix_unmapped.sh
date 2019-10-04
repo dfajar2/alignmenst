@@ -165,7 +165,7 @@ then
     echo ${genome} genome - $gen_size bases. $fastq_lines lines will be selected. ;
 elif [ ${genome} = "Pseudomonas" ];
 then
-    reference="/media/ngs/ReferenceSequences/Pseudomonas_aeruginosa_GCF_000006765.1_ASM676v1_genomic.fna";
+    reference="/media/ngs/ReferenceSequences/Pseudomonas_aeruginosa_GCF_000006765/Pseudomonas_aeruginosa_GCF_000006765.1_ASM676v1_genomic.fna";
     gen_size=6264404 ;
     fastq_lines=$(echo 83528*${c} | bc) ;
     st=57 ; #same as rhodo
