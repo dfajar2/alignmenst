@@ -12,7 +12,7 @@ export PATH=/media/software/vcftools/0.1.17/bin:/media/software/vcflib/bin:${PAT
 export PATH=/media/software/vcflib/bin:${PATH}
 export PATH=/media/software/R/3.5.0/bin:${PATH}
 export PATH=/media/software/picard/2.18.21/bin:${PATH}
-
+export PATH=/media/software/bwa/0.7.17/bin:$PATH
 # Export PERL5LIB for vcftools
 export PERL5LIB=/media/software/vcftools/0.1.17/share/perl/5.26.1:${PERL5LIB}
 
@@ -586,15 +586,15 @@ then
 	echo "Paired data"
 	for f in $samples ; \
 	do echo bwa mem -M -t 16 ${ref_path}/${ref_name} \
-	-1 `ls ${data_dir}${f}_*R1*fastq* | tr "\n" "," | sed 's/,$//g'` \
-	-2 `ls ${data_dir}${f}_*R2*fastq* | tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; \
+	`ls ${data_dir}${f}_*R1*fastq* | tr "\n" "," | sed 's/,$//g'` \
+	`ls ${data_dir}${f}_*R2*fastq* | tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; \
 	done  > BWA_bash.sh
 # echo Debug; echo STOP!!!!; cat Bowtie_bash.sh; exit 1
 else
 	echo "Unpaired data"
 	for f in $samples ; \
 	do echo bwa mem -M -t 16 ${ref_path}/${ref_name} \
-	-U `ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; \
+	`ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; \
 	done  > BWA_bash.sh;
 
 #echo Debug; echo STOP!!!!; cat Bowtie_bash.sh; exit 1
