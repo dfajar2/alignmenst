@@ -38,7 +38,7 @@ USAGE:
     $ /path/to/script.sh OPTIONS 
     
 	Required:
-	[ -g Define genome. Available organisms: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo', 'Taq', 'Salmonella', 'Pseudomonas', 'Enterobacter' and 'Serratia'. ]
+	[ -g Define genome. Available organisms: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo', 'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas', 'Enterobacter' and 'Serratia'. ]
 	[ -f Full path to reads directory ]
 	[ -o Output Directory ]
 	
@@ -75,14 +75,12 @@ if [ -z "${g}" ] || [ -z "${f}" ] || [ -z "${o}" ] ; then
 	echo ; echo "ERROR - Missing arguments"; echo "$usage"; exit 1
 fi
 
-if [ "$g" != "Human" ] && [ "$g" != "St43300" ] && [ "$g" != "Ecoli" ] && [ "$g" != "Staph" ] && [ "$g" != "Rhodo" ] && [ "$g" != "Taq" ] && [ "$g" != "Salmonella" ] && [ "$g" != "Pseudomonas" ] && [ "$g" != "Enterobacter" ] && [ "$g" != "Serratia" ]
+if [ "$g" != "Human" ] && [ "$g" != "St43300" ] && [ "$g" != "Ecoli" ] && [ "$g" != "Staph" ] && [ "$g" != "Rhodo" ] && [ "$g" != "Rhodo241" ] &&[ "$g" != "Taq" ] && [ "$g" != "Salmonella" ] && [ "$g" != "Pseudomonas" ] && [ "$g" != "Enterobacter" ] && [ "$g" != "Serratia" ]
 then
 	echo ERROR - Invalid Genome \(-g\). ${g} genome not available.
-	echo Valid options: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo', 'Taq', 'Salmonella', 'Pseudomonas', 'Enterobacter' and 'Serratia'
+	echo Valid options: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo', 'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas', 'Enterobacter' and 'Serratia'
 	echo ; echo --------; echo "$usage"; exit 1; 
 fi
-
-
 
 genome=${g}
 reads=${f}
@@ -133,6 +131,14 @@ then
     en=81
     echo ${genome} genome - $gen_size bases. $fastq_lines lines will be selected. ;
 #New_from_here
+elif [ ${genome} = "Rhodo241" ];
+then
+    reference="/media/ngs/ReferenceSequences/Rhodobacter_sphaeroides_2.4.1/Rhodobacter_all.fasta" ;
+    gen_size=4557127 ;
+    fastq_lines=$(echo 68000*${c} | bc) ;
+    st=57
+    en=81
+    echo ${genome} genome - $gen_size bases. $fastq_lines lines will be selected. ;
 elif [ ${genome} = "Serratia" ];
 then
     reference="/media/ngs/ReferenceSequences/Serratia_liquegaciens_GCF_000422085/Serratia_liquegaciens_GCF_000422085.1_ASM42208v1_genomic.fna" ;
