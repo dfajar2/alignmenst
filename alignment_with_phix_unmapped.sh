@@ -35,44 +35,52 @@ and used it to split first string to the left to get the sample name.
 
 USAGE:
 
-    $ /path/to/script.sh OPTIONS 
-    
-	Required:
-	[ -g Define genome. Available organisms: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo', 'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas', 'Enterobacter' and 'Serratia'. ]
-	[ -f Full path to reads directory ]
-	[ -o Output Directory ]
-	
-	Optional:
-	[ -e string to help filter files]
-	[ -c Expected depth to subsample reads. i.e. '10', '5', '1', etc. Default: 10 (for 10x) ]
-	[ -a Use all reads. No downsampling ]
+    $ /path/to/script.sh OPTIONS
+
+        Required:
+        [ -g Define genome. Available organisms: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo',
+                                                 'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas',
+                                                 'Enterobacter' and 'Serratia' ]
+        [ -f Full path to reads directory ]
+        [ -o Output Directory ]
+
+        Optional:
+        [ -s Use BWA instead of Bowtie2 (Default) ]
+        [ -e string to help filter files]
+        [ -c Expected depth to subsample reads. i.e. '10', '5', '1', etc. Default: 10 (for 10x) ]
+        [ -a Use all reads. No downsampling ]
+
 "
 e="."
 gen_size=""
 c=10
+s=0
 
-while getopts "g:f:o:e:c:a" options; do
-	case "${options}" in
-		g)
-			g=${OPTARG} ;;
-		f)
-			f=${OPTARG} ;;
-		o)
-			o=${OPTARG} ;;
-		e)
-		    e=${OPTARG};;
-		c)
-			c=${OPTARG};;
-		a)
-			c=999999 ;;
-		*)
-			echo ${usage} ;;
-	esac
+while getopts "g:f:o:e:c:as" options; do
+        case "${options}" in
+                g)
+                        g=${OPTARG} ;;
+                f)
+                        f=${OPTARG} ;;
+                o)
+                        o=${OPTARG} ;;
+                s)
+                        s=1 ;;
+                e)
+                        e=${OPTARG};;
+                c)
+                        c=${OPTARG};;
+                a)
+                        c=99999999 ;;
+                *)
+                        echo ${usage} ;;
+        esac
 done
 
 shift $((OPTIND-1))
 if [ -z "${g}" ] || [ -z "${f}" ] || [ -z "${o}" ] ; then
-	echo ; echo "ERROR - Missing arguments"; echo "$usage"; exit 1
+        echo ; echo "ERROR - Missing arguments"; echo "$usage"; exit 1
+
 fi
 
 if [ "$g" != "Human" ] && [ "$g" != "St43300" ] && [ "$g" != "Ecoli" ] && [ "$g" != "Staph" ] && [ "$g" != "Rhodo" ] && [ "$g" != "Rhodo241" ] &&[ "$g" != "Taq" ] && [ "$g" != "Salmonella" ] && [ "$g" != "Pseudomonas" ] && [ "$g" != "Enterobacter" ] && [ "$g" != "Serratia" ]
@@ -242,33 +250,75 @@ numsamp=$(printf '%s\n' $samples:q | wc -w)
 echo Number of Samples: ${numsamp}
 echo Names of the first 10 samples: `for f in {1..10} ; do echo ${samples} |  awk -v v=${f} '{print $v}' ; done`
 
-#Check if SE or PE
-if ls -1 ${reads} | grep -q _R2 ;
+if [ $s -eq 0 ]
 then
-	echo ---------------------
-	echo "This study contains PE reads"
-	samp1=$(echo ${samples} | awk '{print $1}')
-	echo Reads for Sample ${samp1}:
-	ls ${reads}${samp1}_*_R1*
-	ls ${reads}${samp1}_*_R2*
-	echo ---------------------
-	#ls ${reads}${samp1}_*_R1*
-	popo1=$(ls ${reads}${samp1}_*_R1*)
-	popo2=$(ls ${reads}${samp1}_*_R2*)
-	echo Bowtie2 command:
-	echo bowtie2 --threads 16 --rg-id ${samp1} --rg SM:${samp1} --rg LB:${samp1} --rg CN:LGC_Genomics --rg PL:Illumina -x ${base_dir}/../reference/${ref_basename} -1 `ls ${popo1} | tr "\n" "," | sed 's/,$//g'` -2 `ls ${popo2} | tr "\n" "," | sed 's/,$//g'`  2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${samp1}_sorted.bam
+        echo Aligner to use: Bowtie2
+elif [ $s -eq 1  ]
+then
+        echo Aligner to use: BWA
 else
-	echo ---------------------
-	echo "This study contains SE reads"
-	samp1=$(echo ${samples} | awk '{print $1}')
-	echo Read for Sample ${samp1}:
-	ls ${reads}${samp1}_*_R1*
-	popo=$(ls ${reads}${samp1}_*_R1* | grep ${exp})
-	echo Bowtie2 command:
-	echo bowtie2 --threads 16 --rg-id ${samp1} --rg SM:${samp1} --rg LB:${samp1} --rg CN:LGC_Genomics --rg PL:Illumina -x ${base_dir}/../reference/${ref_basename} -U `ls ${popo} | tr "\n" "," | sed 's/,$//g'` 2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${samp1}_sorted.bam
+        echo No aligner defined ???
 fi
 
+#Check if SE or PE
 
+if [ $s -eq 0 ]
+then
+        echo Using Bowtie2 for alignment
+        if ls -1 ${reads} | grep -q _R2 ;
+        then
+                echo ---------------------
+                echo "This study contains PE reads"
+                samp1=$(echo ${samples} | awk '{print $1}')
+                echo Reads for Sample ${samp1}:
+                ls ${reads}${samp1}_*_R1*
+                ls ${reads}${samp1}_*_R2*
+                echo ---------------------
+                #ls ${reads}${samp1}_*_R1*
+                popo1=$(ls ${reads}${samp1}_*_R1*)
+                popo2=$(ls ${reads}${samp1}_*_R2*)
+                echo Bowtie2 command:
+                echo bowtie2 --threads 16 --rg-id ${samp1} --rg SM:${samp1} --rg LB:${samp1} --rg CN:LGC_Genomics --rg PL:Illumina -x ${base_dir}/../reference/${ref_basename} -1 `ls ${popo1} | tr "\n" "," | sed 's/,$//g'` -2 `ls ${popo2} | tr "\n" "," | sed 's/,$//g'`  2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${samp1}_sorted.bam
+        else
+                echo ---------------------
+                echo "This study contains SE reads"
+                samp1=$(echo ${samples} | awk '{print $1}')
+                echo Read for Sample ${samp1}:
+                ls ${reads}${samp1}_*_R1*
+                popo=$(ls ${reads}${samp1}_*_R1* | grep ${exp})
+                echo Bowtie2 command:
+                echo bowtie2 --threads 16 --rg-id ${samp1} --rg SM:${samp1} --rg LB:${samp1} --rg CN:LGC_Genomics --rg PL:Illumina -x ${base_dir}/../reference/${ref_basename} -U `ls ${popo} | tr "\n" "," | sed 's/,$//g'` 2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${samp1}_sorted.bam
+        fi
+elif [ $s -eq 1  ]
+then
+        echo Using BWA for alignment
+        if ls -1 ${reads} | grep -q _R2 ;
+        then
+                echo ---------------------
+                echo "This study contains PE reads"
+                samp1=$(echo ${samples} | awk '{print $1}')
+                echo Reads for Sample ${samp1}:
+                ls ${reads}${samp1}_*_R1*
+                ls ${reads}${samp1}_*_R2*
+                echo ---------------------
+                #ls ${reads}${samp1}_*_R1*
+                popo1=$(ls ${reads}${samp1}_*_R1*)
+                popo2=$(ls ${reads}${samp1}_*_R2*)
+                echo BWA command:
+                echo bwa mem -M -t 16 ${reference} -1 `ls ${popo1} | tr "\n" "," | sed 's/,$//g'` -2 `ls ${popo2} | tr "\n" "," | sed 's/,$//g'` 2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${samp1}_sorted.bam
+        else
+                echo ---------------------
+                echo "This study contains SE reads"
+                samp1=$(echo ${samples} | awk '{print $1}')
+                echo Read for Sample ${samp1}:
+                ls ${reads}${samp1}_*_R1*
+                popo=$(ls ${reads}${samp1}_*_R1* | grep ${exp})
+                echo BWA command:
+                echo bwa mem -M -t 16 ${reference} -U `ls ${popo1} | tr "\n" "," | sed 's/,$//g'` 2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${samp1}_sorted.bam
+        fi
+else
+        echo No aligner defined????
+fi
 
 # Check for ${output_dir} folder - to continue
 if [ -d ${output_dir} ]
@@ -304,10 +354,9 @@ fi
 ### START ###
 #############
 
-
 #Project folder
 mkdir ${output_dir} ; cd ${output_dir}
-mkdir -p ${output_dir}/deliverables/
+mkdir -p deliverables/
 base_dir=$(pwd)
 echo ${base_dir}
 
@@ -315,30 +364,30 @@ echo ${base_dir}
 mkdir data; cd data
 for file in $(ls --color=never -1 ${reads}); do ln -s ${reads}$file ; done
 
-#Fastqc
-echo ---------------
-echo Do you want to run Fastqc?
-echo Press Y to run it, any other key to skip it.
-echo ---------------
-read input
-if [ "$input" != "Y" ] && [ "$input" != "y" ];
-then
-        echo Skipping Fastqc analysis...  ;
-        echo
-else
-	mkdir fastqc
-	if ls -1 --color=never ${reads} | grep -q _R2 ;
-	then
-		for f in `ls ${reads}${samp1}_*_R1*| awk -F"_R" '{print $1}'` ; do echo $f ; mkdir ${f}_fastqc; fastqc -o ${f}_fastqc -t 16 ${f}_R1_001.fastq.gz ${f}_R2_001.fastq.gz; done
-		mv *_fastqc fastqc
-	else
-		for f in `ls ls ${reads}${samp1}_*_R1*| awk -F"_R" '{print $1}'` ; do echo $f ; mkdir ${f}_fastqc; fastqc -o ${f}_fastqc -t 16 ${f}_R1_001.fastq.gz ; done
-		mv *_fastqc fastqc
-	fi
-fi
-
-
-cd ..
+##Fastqc
+#echo ---------------
+#echo Do you want to run Fastqc?
+#echo Press Y to run it, any other key to skip it.
+#echo ---------------
+#read input
+#echo ${reads}
+#cd ${reads}
+#if [ "$input" != "Y" ] && [ "$input" != "y" ];
+#then
+#        echo Skipping Fastqc analysis...  ;
+#        echo
+#else
+#       mkdir -p fastqc
+#       if ls -1 --color=never ${reads} | grep -q _R2 ;
+#       then
+#               for f in `ls ${samp1}_*_R1*| awk -F"_R" '{print $1}'` ; do echo $f ; fastqc -o ${reads}/fastqc/${f}_fastqc -t 16 ${reads}/${f}_R1_001.fastq.gz ../${f}_R2_001.fastq.gz; done
+#       else
+#               for f in `ls ${samp1}_*_R1*| awk -F"_R" '{print $1}'` ; do echo $f ; fastqc -o ${reads}/fastqc/${f}_fastqc -t 16 ${reads}/${f}_R1_001.fastq.gz ; done
+#       fi
+#fi
+#pwd
+#exit 1
+#cd ..
 
 #Reference folder
 if [ -d ${base_dir}../reference ]
@@ -349,7 +398,7 @@ then
 elif [ -f $ref_name ]
 then
 	mkdir ../reference; cd ../reference
-	ln -s ${reference} .
+	ln -s ${reference}* .
 	cd ${base_dir}
 else
 	echo Fasta file does not exist to build index ; exit 1
@@ -452,20 +501,36 @@ else
 	exit 1
 fi
 
-# Check Reference and Bowtie2 index
-if [ -f $ref_name ] && [ -f ${ref_basename}.1.bt2 ]
+#Check Reference Index
+if [ $s -eq 0 ]
 then
-	echo Reference and Bowtie index already exist.
-elif [ -f $ref_name ]
-then
-	echo Reference exist. Building Bowtie2 reference index.
-	bowtie2-build --threads 16  ${ref_complete_name} ${ref_basename}
-	cd -
+        # Check Reference and Bowtie2 index
+        if [ -f $ref_name ] && [ -f ${ref_basename}.1.bt2 ]
+        then
+                echo Reference and Bowtie index already exist.
+        elif [ -f $ref_name ]
+        then
+                echo Reference exist. Building Bowtie2 reference index.
+                bowtie2-build --threads 16  ${ref_complete_name} ${ref_basename}
+                cd -
+        else
+                echo Fasta file does not exist to build index ; exit 1
+        fi
 else
-	echo Fasta file does not exist to build index ; exit 1
+        # Check Reference and BWA index
+        if [ -f $ref_name ] && [ -f ${ref_name}.bwt ]
+        then
+                echo Reference and BWA index already exist.
+        elif [ -f $ref_name ]
+        then
+                echo Reference exist. Building BWA reference index.
+                bwa index ${ref_name}
+                cd -
+        else
+                echo Fasta file does not exist to build index ; exit 1
+        fi
 fi
-
-cd ${base_dir} 
+cd ${base_dir}
 }
 
 
@@ -474,12 +539,10 @@ echo CheckReference
 CheckReference
 
 
-function Alignment() {
+function Bowtie2Alignment() {
 cd ${base_dir}
-mkdir bowtie2; cd bowtie2
-
+mkdir alignments; cd alignments
 # Bowtie2 alignment
-
 echo Files list
 lst=`ls --color=never -1 ${data_dir}`
 echo Checking if SE or PE
@@ -494,7 +557,6 @@ else
 	for f in $samples ; do echo bowtie2 --threads 48 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina --minins 0 -x ${ref_path}/${ref_basename} -U `ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; done > Bowtie_bash.sh ; echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" >> Bowtie_bash.sh
 
 #echo Debug; echo STOP!!!!; cat Bowtie_bash.sh; exit 1
-
 fi
 
 echo Running Bowtie scripts
@@ -510,8 +572,63 @@ fi
 cd ${base_dir} 
 }
 
+
+function BWAAlignment() {
+cd ${base_dir}
+mkdir alignments; cd alignments
+# Bowtie2 alignment
+echo Files list
+lst=`ls --color=never -1 ${data_dir}`
+echo Checking if SE or PE
+data_dir=${base_dir}/data/downsampled/qual_trim/
+if ls -1 $data_dir | grep -q _R2 ;
+then
+	echo "Paired data"
+	for f in $samples ; \
+	do echo bwa mem -M -t 16 ${ref_path}/${ref_name} \
+	-1 `ls ${data_dir}${f}_*R1*fastq* | tr "\n" "," | sed 's/,$//g'` \
+	-2 `ls ${data_dir}${f}_*R2*fastq* | tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; \
+	done  > BWA_bash.sh
+# echo Debug; echo STOP!!!!; cat Bowtie_bash.sh; exit 1
+else
+	echo "Unpaired data"
+	for f in $samples ; \
+	do echo bwa mem -M -t 16 ${ref_path}/${ref_name} \
+	-U `ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; \
+	done  > BWA_bash.sh;
+
+#echo Debug; echo STOP!!!!; cat Bowtie_bash.sh; exit 1
+fi
+
+echo Running Bowtie scripts
+                              
+if [ -f BWA_bash.sh ]                
+then
+	echo Aligning samples with BWA
+	sh BWA_bash.sh
+else
+	echo No BWA file \(BWA_bash.sh\) generated.; exit 1
+fi
+#Exit bwa
+cd ${base_dir} 
+}
+
 echo Alignment
-Alignment
+if [ $s -eq 0 ]
+then
+        echo Aligner to use: Bowtie2
+	echo Aligning samples
+	Bowtie2Alignment
+elif [ $s -eq 1  ]
+then
+        echo Aligner to use: BWA
+	echo Aligning samples
+	BWAAlignment
+else
+        echo No aligner defined ???
+fi
+
+
  
 #echo Comment exit to fix and continue after debugging
 #deactivate; exit 1
@@ -521,7 +638,7 @@ Alignment
 function Markdup() {
 cd ${base_dir}
 mkdir markdup; cd markdup
-cd ${base_dir}/bowtie2 ; for f in `ls *bam| awk -F. '{print $1}'`; do echo ; echo ${f};  java -jar /media/software/picard/2.18.21/bin/picard.jar MarkDuplicates INPUT=${f}.bam  OUTPUT=../markdup/${f}.markdup.bam METRICS_FILE=../markdup/${f}_metrics.txt REMOVE_DUPLICATES=false VALIDATION_STRINGENCY=LENIENT ; done
+cd ${base_dir}/alignments ; for f in `ls *bam| awk -F. '{print $1}'`; do echo ; echo ${f};  java -jar /media/software/picard/2.18.21/bin/picard.jar MarkDuplicates INPUT=${f}.bam  OUTPUT=../markdup/${f}.markdup.bam METRICS_FILE=../markdup/${f}_metrics.txt REMOVE_DUPLICATES=false VALIDATION_STRINGENCY=LENIENT ; done
 cd ${base_dir}/markdup ; for d in `ls *markdup.bam`; do echo ${d};  samtools index ${d}; done
 cd ${base_dir}
 } 
