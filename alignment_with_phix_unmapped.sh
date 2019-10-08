@@ -415,7 +415,7 @@ ref_path="/media/data/diego/work/reference/"
 ref_basename="PhiXgenome" 
 mkdir bowtie2_phix
 cd bowtie2_phix/ 
-for f in ${samples} ; do echo bowtie2 --threads 48 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina --dovetail --minins 0 --maxins 1000 -x ${ref_path}${ref_basename} -1 ${reads}${f}*_R1_*gz -2 ${reads}${f}*_R2_*gz  2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam; done > Bowtie_bash.sh ; #echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" \>\> Bowtie_bash.sh 
+for f in ${samples} ; do echo bowtie2 --threads 48 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina -x ${ref_path}${ref_basename} -1 ${reads}${f}*_R1_*gz -2 ${reads}${f}*_R2_*gz  2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam; done > Bowtie_bash.sh ; #echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" \>\> Bowtie_bash.sh 
 sh Bowtie_bash.sh 
 mkdir ${base_dir}/unmapped_to_phix_reads 
 for f in `ls *bam | awk -F. '{print $1}'` ; do echo Extracting unmapped reads: Sample ${f}; samtools view -b -f 12 ${f}.bam > ${f}_unmapped.bam ; bamToFastq -i ${f}_unmapped.bam -fq ${base_dir}/unmapped_to_phix_reads/${f}_unmapped_R1.fq -fq2 ${base_dir}/unmapped_to_phix_reads/${f}_unmapped_R2.fq ; done 
@@ -550,11 +550,11 @@ data_dir=${base_dir}/data/downsampled/qual_trim/
 if ls -1 $data_dir | grep -q _R2 ;
 then
 	echo "Paired data"
-	for f in $samples ; do echo bowtie2 --threads 48 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina --minins 0 -x ${ref_path}/${ref_basename} -1 `ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` -2 `ls ${data_dir}${f}_*R2*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam; done > Bowtie_bash.sh ; echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" >> Bowtie_bash.sh
+	for f in $samples ; do echo bowtie2 --threads 48 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina -x ${ref_path}/${ref_basename} -1 `ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` -2 `ls ${data_dir}${f}_*R2*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam; done > Bowtie_bash.sh ; echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" >> Bowtie_bash.sh
 # echo Debug; echo STOP!!!!; cat Bowtie_bash.sh; exit 1
 else
 	echo "Unpaired data"
-	for f in $samples ; do echo bowtie2 --threads 48 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina --minins 0 -x ${ref_path}/${ref_basename} -U `ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; done > Bowtie_bash.sh ; echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" >> Bowtie_bash.sh
+	for f in $samples ; do echo bowtie2 --threads 48 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina -x ${ref_path}/${ref_basename} -U `ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; done > Bowtie_bash.sh ; echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" >> Bowtie_bash.sh
 
 #echo Debug; echo STOP!!!!; cat Bowtie_bash.sh; exit 1
 fi
@@ -740,7 +740,6 @@ echo Debug ; cat ${base_dir}/genome_coverage/genome_0_coverage_table.txt
 echo Debug ; head ${base_dir}/coverage/*_bedgraph.bed
 
 cd  ${base_dir}
-mkdir ${base_dir}/deliverables
 cp ${base_dir}/stats/stats_table.txt ${base_dir}/deliverables
 cp ${base_dir}/gc_bias/*_table_for_plot.txt ${base_dir}/deliverables
 cp ${base_dir}/genome_coverage/genome_0_coverage_table.txt  ${base_dir}/deliverables
