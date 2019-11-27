@@ -25,10 +25,8 @@ echo $start
 
 usage="
 Important Note:
-This is a modified script. This is for sets of samples that 
-do not contain '_S' in the sample name. 
 
-I used this script in sample names that contain '_' in the name
+I used this script in sample names that contain '_S' in the name
 and used it to split first string to the left to get the sample name.  
 
 ===============
@@ -40,7 +38,7 @@ USAGE:
         Required:
         [ -g Define genome. Available organisms: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo',
                                                  'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas',
-                                                 'Enterobacter' and 'Serratia' ]
+                                                 'Enterobacter', 'Serratia', 'Maize' and '8gen' ]
         [ -f Full path to reads directory ]
         [ -o Output Directory ]
 
@@ -49,14 +47,17 @@ USAGE:
         [ -e string to help filter files]
         [ -c Expected depth to subsample reads. i.e. '10', '5', '1', etc. Default: 10 (for 10x) ]
         [ -a Use all reads. No downsampling ]
+	[ -l Minimum length of reads after adapter trimming. Default: 90  ]
 
 "
 e="."
 gen_size=""
 c=10
 s=0
+a=0
+l=90
 
-while getopts "g:f:o:e:c:as" options; do
+while getopts "g:f:o:e:c:l:as" options; do
         case "${options}" in
                 g)
                         g=${OPTARG} ;;
@@ -67,11 +68,14 @@ while getopts "g:f:o:e:c:as" options; do
                 s)
                         s=1 ;;
                 e)
-                        e=${OPTARG};;
+                        e=${OPTARG} ;;
                 c)
-                        c=${OPTARG};;
+                        c=${OPTARG} ;;
+		l)
+			l=${OPTARG} ;;
                 a)
-                        c=99999999 ;;
+                        c=99999999 
+			a=1 ;;
                 *)
                         echo ${usage} ;;
         esac
@@ -83,10 +87,10 @@ if [ -z "${g}" ] || [ -z "${f}" ] || [ -z "${o}" ] ; then
 
 fi
 
-if [ "$g" != "Human" ] && [ "$g" != "St43300" ] && [ "$g" != "Ecoli" ] && [ "$g" != "Staph" ] && [ "$g" != "Rhodo" ] && [ "$g" != "Rhodo241" ] &&[ "$g" != "Taq" ] && [ "$g" != "Salmonella" ] && [ "$g" != "Pseudomonas" ] && [ "$g" != "Enterobacter" ] && [ "$g" != "Serratia" ]
+if [ "$g" != "Human" ] && [ "$g" != "St43300" ] && [ "$g" != "Ecoli" ] && [ "$g" != "Staph" ] && [ "$g" != "Rhodo" ] && [ "$g" != "Rhodo241" ] &&[ "$g" != "Taq" ] && [ "$g" != "Salmonella" ] && [ "$g" != "Pseudomonas" ] && [ "$g" != "Enterobacter" ] && [ "$g" != "Serratia" ] && [ "$g" != "Maize" ] && [ "$g" != "8gen" ]
 then
 	echo ERROR - Invalid Genome \(-g\). ${g} genome not available.
-	echo Valid options: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo', 'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas', 'Enterobacter' and 'Serratia'
+	echo Valid options: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo', 'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas', 'Enterobacter', 'Serratia' and '8gen'
 	echo ; echo --------; echo "$usage"; exit 1; 
 fi
 
@@ -96,6 +100,7 @@ output_dir=${o}
 exp=${e}
 st=1
 en=100
+min_length=${l}
 
 # Define Reference Genome file
 if [ ${genome} = "Human" ];
@@ -108,7 +113,7 @@ then
     echo ${genome} genome - $gen_size bases. $fastq_lines lines will be selected. ;
 elif [ ${genome} = "Ecoli" ];
 then
-    reference="/media/ngs/ReferenceSequences/EcoliK12-MG1655-NC_000913.3.fasta" ;
+    reference="/media/ngs/ReferenceSequences/EcoliK12-MG1655-NC_000913/EcoliK12-MG1655-NC_000913.3.fasta" ;
     gen_size=4641652 ;
     fastq_lines=$(echo 61892*${c} | bc) ;
     st=35 ;
@@ -187,6 +192,23 @@ then
     st=57 ; #same as rhodo
     en=81 ;
     echo ${genome} genome - $gen_size bases. $fastq_lines lines will be selected. ;
+elif [ ${genome} = "Maize" ];
+then
+    reference="/media/ngs/ReferenceSequences/Maize/EnsemblB73-AGPv3.22/Zea_mays.AGPv3.22.dna.genome.fa";
+    gen_size=2067864161 ;
+    fastq_lines=$(echo 27571522*${c} | bc) ;
+    st=35 ;
+    en=65 ;
+    echo IMPORTANT -- Need to check range!!
+    echo ${genome} genome - $gen_size bases. $fastq_lines lines will be selected. ;    
+elif [ ${genome} = "8gen" ];
+then
+    reference="/media/data/diego/work/Fidelity/reference/allgenomes.fasta" ;
+    gen_size=36669273 ;
+    fastq_lines=$(echo 311800*${c} | bc) ;
+    st=35 ;
+    en=80 ;
+    echo ${genome} genome - $gen_size bases. $fastq_lines lines will be selected. ;
 else
 	echo "No valid reference."; exit 1
 fi
@@ -203,8 +225,7 @@ elif [[ "$reference" == *fna  ]]
 then
 	echo Reference is in fasta format
 else
-        echo What the hell??? File Enterobacter_cloacae_GCF_000025565does not have .fasta, .fa or .fna suffix
-        deactivate
+        echo What the hell??? File does not have .fasta, .fa or .fna suffix
 	exit 1
 fi
 
@@ -230,6 +251,7 @@ echo Reference_base_name = ${ref_basename}
 echo expression = ${exp}
 echo Lines to filter = ${fastq_lines}
 echo ${genome} genome - $gen_size bases. $fastq_lines lines will be selected.
+echo Minimum length of reads after trimming = ${min_length} bases 
 
 #Check paths
 if [ ! -f ${reference} ] || [ ! -d ${reads} ] ;
@@ -246,7 +268,7 @@ else
 	samples=$(for f in `ls --color=never -1 "${reads}" | grep ${exp} | grep _R1 | grep -v Unde | grep  -v _I | grep -v config.xml |  grep -v  FastqSummaryF1L1.txt | awk -F"_S" '{print $1}' | sort -u` ; do echo $f; done)  
 fi
 
-numsamp=$(printf '%s\n' $samples:q | wc -w)
+numsamp=$(printf '%s\n' $samples | wc -w)
 echo Number of Samples: ${numsamp}
 echo Names of the first 10 samples: `for f in {1..10} ; do echo ${samples} |  awk -v v=${f} '{print $v}' ; done`
 
@@ -278,7 +300,7 @@ then
                 popo1=$(ls ${reads}${samp1}_*_R1*)
                 popo2=$(ls ${reads}${samp1}_*_R2*)
                 echo Bowtie2 command:
-                echo bowtie2 --threads 16 --rg-id ${samp1} --rg SM:${samp1} --rg LB:${samp1} --rg CN:LGC_Genomics --rg PL:Illumina -x ${base_dir}/../reference/${ref_basename} -1 `ls ${popo1} | tr "\n" "," | sed 's/,$//g'` -2 `ls ${popo2} | tr "\n" "," | sed 's/,$//g'`  2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${samp1}_sorted.bam
+                echo bowtie2 --threads 32 --rg-id ${samp1} --rg SM:${samp1} --rg LB:${samp1} --rg CN:LGC_Genomics --rg PL:Illumina -x ${base_dir}/../reference/${ref_basename} -1 `ls ${popo1} | tr "\n" "," | sed 's/,$//g'` -2 `ls ${popo2} | tr "\n" "," | sed 's/,$//g'`  2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@24 -m 4G \> ${samp1}_sorted.bam
         else
                 echo ---------------------
                 echo "This study contains SE reads"
@@ -287,7 +309,7 @@ then
                 ls ${reads}${samp1}_*_R1*
                 popo=$(ls ${reads}${samp1}_*_R1* | grep ${exp})
                 echo Bowtie2 command:
-                echo bowtie2 --threads 16 --rg-id ${samp1} --rg SM:${samp1} --rg LB:${samp1} --rg CN:LGC_Genomics --rg PL:Illumina -x ${base_dir}/../reference/${ref_basename} -U `ls ${popo} | tr "\n" "," | sed 's/,$//g'` 2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${samp1}_sorted.bam
+                echo bowtie2 --threads 32 --rg-id ${samp1} --rg SM:${samp1} --rg LB:${samp1} --rg CN:LGC_Genomics --rg PL:Illumina -x ${base_dir}/../reference/${ref_basename} -U `ls ${popo} | tr "\n" "," | sed 's/,$//g'` 2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@24 -m 4G \> ${samp1}_sorted.bam
         fi
 elif [ $s -eq 1  ]
 then
@@ -305,7 +327,7 @@ then
                 popo1=$(ls ${reads}${samp1}_*_R1*)
                 popo2=$(ls ${reads}${samp1}_*_R2*)
                 echo BWA command:
-                echo bwa mem -M -t 16 ${reference} -1 `ls ${popo1} | tr "\n" "," | sed 's/,$//g'` -2 `ls ${popo2} | tr "\n" "," | sed 's/,$//g'` 2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${samp1}_sorted.bam
+                echo bwa mem -M -t 32 ${reference} -1 `ls ${popo1} | tr "\n" "," | sed 's/,$//g'` -2 `ls ${popo2} | tr "\n" "," | sed 's/,$//g'` 2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@24 -m 4G \> ${samp1}_sorted.bam
         else
                 echo ---------------------
                 echo "This study contains SE reads"
@@ -314,7 +336,7 @@ then
                 ls ${reads}${samp1}_*_R1*
                 popo=$(ls ${reads}${samp1}_*_R1* | grep ${exp})
                 echo BWA command:
-                echo bwa mem -M -t 16 ${reference} -U `ls ${popo1} | tr "\n" "," | sed 's/,$//g'` 2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${samp1}_sorted.bam
+                echo bwa mem -M -t 32 ${reference} -U `ls ${popo1} | tr "\n" "," | sed 's/,$//g'` 2\>${samp1}.log \| samtools view -Sbu - \| samtools sort -@24 -m 4G \> ${samp1}_sorted.bam
         fi
 else
         echo No aligner defined????
@@ -331,7 +353,8 @@ then
 	echo Exiting...
 	exit 1
 else
-	# echo Uncomment line below to remove Directory
+	#DEGUG comment echo Uncomment line below to remove Directory
+	#
 	rm -r ${output_dir}
 fi
 fi
@@ -355,16 +378,24 @@ fi
 #############
 
 #Project folder
-mkdir ${output_dir} ; cd ${output_dir}
+#DEBUG  echo Uncomment line below to remove Directory
+	#
+mkdir ${output_dir} 
+cd ${output_dir}
 mkdir -p deliverables/
 base_dir=$(pwd)
 echo ${base_dir}
 
 #Data folder
-mkdir data; cd data
+#DEBUG echo Uncomment line below to remove Directory        
+	#
+mkdir data; 
+cd data
+#DEBUG echo Uncomment line below to remove Directory        
 for file in $(ls --color=never -1 ${reads}); do ln -s ${reads}$file ; done
 
-##Fastqc
+
+	##Fastqc
 #echo ---------------
 #echo Do you want to run Fastqc?
 #echo Press Y to run it, any other key to skip it.
@@ -415,20 +446,21 @@ ref_path="/media/data/diego/work/reference/"
 ref_basename="PhiXgenome" 
 mkdir bowtie2_phix
 cd bowtie2_phix/ 
-for f in ${samples} ; do echo bowtie2 --threads 48 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina -x ${ref_path}${ref_basename} -1 ${reads}${f}*_R1_*gz -2 ${reads}${f}*_R2_*gz  2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam; done > Bowtie_bash.sh ; #echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" \>\> Bowtie_bash.sh 
+for f in ${samples} ; do echo bowtie2 --threads 48 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina -x ${ref_path}${ref_basename} -1 ${reads}${f}_*_R1_*gz -2 ${reads}${f}_*_R2_*gz  2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam; done > Bowtie_bash.sh ; #echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" \>\> Bowtie_bash.sh 
 sh Bowtie_bash.sh 
 mkdir ${base_dir}/unmapped_to_phix_reads 
 for f in `ls *bam | awk -F. '{print $1}'` ; do echo Extracting unmapped reads: Sample ${f}; samtools view -b -f 12 ${f}.bam > ${f}_unmapped.bam ; bamToFastq -i ${f}_unmapped.bam -fq ${base_dir}/unmapped_to_phix_reads/${f}_unmapped_R1.fq -fq2 ${base_dir}/unmapped_to_phix_reads/${f}_unmapped_R2.fq ; done 
 cd ${base_dir}
 }
 echo phix
+	#
+	#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 phix
-
+echo debug!!!!!
 
 function downsampling() {
 echo Base_dir: ${base_dir}
 cd ${base_dir}/data
-mkdir downsampled ; cd downsampled
 echo Base dir : ${base_dir}
 echo
 echo Files in ${base_dir}/data
@@ -441,25 +473,42 @@ echo Files in ${base_dir}
 ls ${base_dir}/
 echo
 echo Samples: ${samples}
-for f in ${samples} ; \
-do echo Downsampling sample: ${f}; \
-paste ${base_dir}/unmapped_to_phix_reads/${f}_sorted_unmapped_R1.fq ${base_dir}/unmapped_to_phix_reads/${f}_sorted_unmapped_R2.fq | \
-awk '{ printf("%s",$0); n++; if(n%4==0) { printf("\n");} else { printf("\t\t");} }' | \
-shuf | \
-head -n ${num_reads} | awk '{if (/^@/) gsub(/ /,"_",$0) ;  print $0 }' | \
-sed 's/\t\t/\n/g' | \
-awk -v samp=${f} '{print $1 > samp"_1.fastq"; print $2 > samp"_2.fastq"}' ; \
-cat ${f}_1.fastq | \
-awk '{if (/^@/) gsub(/_/," ",$0) ;  print $0 }' > ${f}_R1.fastq; \
-cat ${f}_2.fastq | \
-awk '{if (/^@/) gsub(/_/," ",$0) ;  print $0 }' > ${f}_R2.fastq ;  \
-rm ${f}_1.fastq; \
-rm ${f}_2.fastq;  \
-done 
+
 echo Quality trimming
 mkdir qual_trim
 cd qual_trim
-for f in ${samples}; do echo Trimming $f; java -jar /media/software/Trimmomatic-0.36/bin/trimmomatic-0.36.jar PE -phred33 -threads 48 ../${f}_R1.fastq ../${f}_R2.fastq ${f}_R1_trimmed.fastq ${f}_R1_Unpaired.seqs ${f}_R2_trimmed.fastq ${f}_R2_Unpaired.seqs SLIDINGWINDOW:5:20 LEADING:5 TRAILING:5 ; rm ${f}_R*_Unpaired.seqs ;done       
+for f in ${samples}; do echo Quality Trimming $f; java -jar /media/software/Trimmomatic-0.36/bin/trimmomatic-0.36.jar PE -phred33 -threads 48 ${base_dir}/unmapped_to_phix_reads/${f}_sorted_unmapped_R1.fq ${base_dir}/unmapped_to_phix_reads/${f}_sorted_unmapped_R2.fq ${f}_R1_qtrimmed.fastq ${f}_R1_Unpaired.seqs ${f}_R2_qtrimmed.fastq ${f}_R2_Unpaired.seqs SLIDINGWINDOW:5:20 LEADING:5 TRAILING:5 ; rm ${f}_R*_Unpaired.seqs ;done       
+cd ../
+echo Adapter trimming
+mkdir adapter_trim
+cd adapter_trim
+for f in ${samples}; do echo Trimmimg Adapter $f; /media/software/cutadapt/2.3/bin/cutadapt -j 36 --minimum-length=${min_length} -pair-filter=both -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCA -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT -o ${f}_R1_trimmed.fastq -p ${f}_R2_trimmed.fastq ../qual_trim/${f}_R1_qtrimmed.fastq ../qual_trim/${f}_R2_qtrimmed.fastq > ${f}_cutadapt_trimming.log ; done
+
+
+cd ${base_dir}/data
+mkdir downsampled ; cd downsampled
+if [ $a -eq 1 ]
+then
+	for f in ${samples} ; do cp ${base_dir}/unmapped_to_phix_reads/${f}_sorted_unmapped_R1.fq ${f}_R1.fastq; cp ${base_dir}/unmapped_to_phix_reads/${f}_sorted_unmapped_R2.fq ${f}_R2.fastq ; done
+else
+	for f in ${samples} ; \
+	do echo Downsampling sample: ${f}; \
+	paste ${base_dir}/data/adapter_trim/${f}_R1_trimmed.fastq ${base_dir}/data/adapter_trim/${f}_R2_trimmed.fastq | \
+	awk '{ printf("%s",$0); n++; if(n%4==0) { printf("\n");} else { printf("\t\t");} }' | \
+	shuf | \
+	head -n ${num_reads} | awk '{if (/^@/) gsub(/ /,"_",$0) ;  print $0 }' | \
+	sed 's/\t\t/\n/g' | \
+	awk -v samp=${f} '{print $1 > samp"_1.fastq"; print $2 > samp"_2.fastq"}' ; \
+	cat ${f}_1.fastq | \
+	awk '{if (/^@/) gsub(/_/," ",$0) ;  print $0 }' > ${f}_R1.fastq; \
+	cat ${f}_2.fastq | \
+	awk '{if (/^@/) gsub(/_/," ",$0) ;  print $0 }' > ${f}_R2.fastq ;  \
+	rm ${f}_1.fastq; \
+	rm ${f}_2.fastq; \
+	done 
+fi
+
+	
 cd ${base_dir}
 }
 
@@ -544,17 +593,19 @@ cd ${base_dir}
 mkdir alignments; cd alignments
 # Bowtie2 alignment
 echo Files list
-lst=`ls --color=never -1 ${data_dir}`
 echo Checking if SE or PE
-data_dir=${base_dir}/data/downsampled/qual_trim/
+data_dir=${base_dir}/data/downsampled/
+lst=`ls --color=never -1 ${data_dir}`
 if ls -1 $data_dir | grep -q _R2 ;
 then
 	echo "Paired data"
-	for f in $samples ; do echo bowtie2 --threads 48 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina -x ${ref_path}/${ref_basename} -1 `ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` -2 `ls ${data_dir}${f}_*R2*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam; done > Bowtie_bash.sh ; echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" >> Bowtie_bash.sh
+	for f in $samples ; do echo bowtie2 --threads 56 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina -x ${ref_path}/${ref_basename} -1 `ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` -2 `ls ${data_dir}${f}_*R2*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@32 -m 4G \> ${f}_sorted.bam; done > Bowtie_bash.sh ; 
+	#echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" >> Bowtie_bash.sh
 # echo Debug; echo STOP!!!!; cat Bowtie_bash.sh; exit 1
 else
 	echo "Unpaired data"
-	for f in $samples ; do echo bowtie2 --threads 48 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina -x ${ref_path}/${ref_basename} -U `ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; done > Bowtie_bash.sh ; echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" >> Bowtie_bash.sh
+	for f in $samples ; do echo bowtie2 --threads 56 --rg-id ${f} --rg SM:${f} --rg LB:${f} --rg CN:LGC_Genomics --rg PL:Illumina -x ${ref_path}/${ref_basename} -U `ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@32 -m 4G \> ${f}_sorted.bam ; done > Bowtie_bash.sh ;
+	#echo "ls *.bam > orig_bam.lst ; samtools merge -b orig_bam.lst --threads 60 merged_orig_bam_sorted.bam ; samtools index merged_orig_bam_sorted.bam" >> Bowtie_bash.sh
 
 #echo Debug; echo STOP!!!!; cat Bowtie_bash.sh; exit 1
 fi
@@ -576,31 +627,32 @@ cd ${base_dir}
 function BWAAlignment() {
 cd ${base_dir}
 mkdir alignments; cd alignments
-# Bowtie2 alignment
+# BWA alignment
 echo Files list
-lst=`ls --color=never -1 ${data_dir}`
 echo Checking if SE or PE
-data_dir=${base_dir}/data/downsampled/qual_trim/
+data_dir=${base_dir}/data/downsampled/
+lst=`ls --color=never -1 ${data_dir}`
+#echo $data_dir ; exit 1
 if ls -1 $data_dir | grep -q _R2 ;
 then
 	echo "Paired data"
 	for f in $samples ; \
-	do echo bwa mem -M -t 16 ${ref_path}/${ref_name} \
+	do echo bwa mem -M -t 56 ${ref_path}/${ref_name} \
 	`ls ${data_dir}${f}_*R1*fastq* | tr "\n" "," | sed 's/,$//g'` \
-	`ls ${data_dir}${f}_*R2*fastq* | tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; \
+	`ls ${data_dir}${f}_*R2*fastq* | tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@32 -m 4G \> ${f}_sorted.bam ; \
 	done  > BWA_bash.sh
 # echo Debug; echo STOP!!!!; cat Bowtie_bash.sh; exit 1
 else
 	echo "Unpaired data"
 	for f in $samples ; \
-	do echo bwa mem -M -t 16 ${ref_path}/${ref_name} \
-	`ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@16 -m 4G \> ${f}_sorted.bam ; \
+	do echo bwa mem -M -t 56 ${ref_path}/${ref_name} \
+	`ls ${data_dir}${f}_*R1*fastq* |  tr "\n" "," | sed 's/,$//g'` 2\>${f}.log \| samtools view -Sbu - \| samtools sort -@32 -m 4G \> ${f}_sorted.bam ; \
 	done  > BWA_bash.sh;
 
 #echo Debug; echo STOP!!!!; cat Bowtie_bash.sh; exit 1
 fi
 
-echo Running Bowtie scripts
+echo Running BWA scripts
                               
 if [ -f BWA_bash.sh ]                
 then
@@ -650,7 +702,7 @@ function Stats() {
 mkdir stats
 cd ${base_dir}/markdup
 for f in `ls *bam`; do echo ; echo Stats for sample ${f}; samtools stats ${f}> ../stats/${f}.stats ; done
-cd ${base_dir}/stats; for f in `ls *stats`; do echo ${f} ; grep ^SN ${f} | grep -e "sequences:" -e "reads mapped:" -e "bases mapped (cigar):" -e "insert size average:" -e "insert size standard deviation:" -e "reads duplicated:"; echo lolo; done | tr "\n" "\t" | sed 's/lolo\t/lolo\n/g'| sed 's/\tlolo//g' | awk -F"\t" -v gensize=$gen_size 'BEGIN{printf "Sample\tGen_size\tCoverage \tTotalReads\tReads_mapped\tPct\tBases_mapped_(cigar)\tReads_duplicated\tInsert_size_average\tInsert_size_standard_deviation\n"}{printf"%s\t%d\t%.2fx\t%d\t%d\t%.2f\t%d\t%d\t%d\t%d\n",$1,gensize,((($4)*150)/gensize),$4,$13,($13/$4)*100,$20,$16,$24,$27}' > stats_table.txt
+cd ${base_dir}/stats; for f in `ls *stats`; do echo ${f} ; grep ^SN ${f} | grep -e "sequences:" -e "reads mapped:" -e "bases mapped (cigar):" -e "insert size average:" -e "insert size standard deviation:" -e "reads duplicated:"; echo lolo; done | tr "\n" "\t" | sed 's/lolo\t/lolo\n/g'| sed 's/\tlolo//g' | awk -F"\t" -v gensize=$gen_size 'BEGIN{printf "Sample\tGen_size\tCoverage \tTotalReads\tReads_mapped\tPct\tBases_mapped_(cigar)\tReads_duplicated\tInsert_size_average\tInsert_size_standard_deviation\n"}{printf"%s\t%d\t%.2fx\t%d\t%d\t%.2f\t%d\t%d\t%d\t%d\n",$1,gensize,((($4)*150)/gensize),$4,$13,($13/$4)*100,$20,$16,$24,$27}' | sed 's/_sorted.markdup.bam.stats//g' > stats_table.txt
 
 
 #awk -F"\t" 'BEGIN{printf "Sample\tReads_mapped\tBases_mapped_(cigar)\tInsert_size_average\tInsert_size_standard_deviation\tReads_duplicated\n"}{printf "%s\t%d\t%d\t%d\t%.2f\t%d\n",$1,$4,$11,$15,$NF,$7}' > stats_table.txt
@@ -659,9 +711,9 @@ cd ${base_dir}/markdup
 mkdir ../insert_size
 for f in `ls *.bam | awk -F"." '{print $1}'` ; do echo Collect Insert Size Metric for sample ${f} ; java -jar /media/software/picard/2.18.21/bin/picard.jar CollectInsertSizeMetrics I=${f}.markdup.bam O=../insert_size/${f}_size_metrics.txt H=../insert_size/${f}.pdf ; done
 
-
-mkdir ../complexity 
-for f in `ls *.bam | awk -F"." '{print $1}'` ; do echo Library Complexity for sample ${f} ; java -jar /media/software/picard/2.18.21/bin/picard.jar EstimateLibraryComplexity I=${f}.markdup.bam O=../complexity/${f}_complexity.txt ; done
+# Uncomment if you need to estimate library complexity
+#mkdir ../complexity 
+#for f in `ls *.bam | awk -F"." '{print $1}'` ; do echo Library Complexity for sample ${f} ; java -jar /media/software/picard/2.18.21/bin/picard.jar EstimateLibraryComplexity I=${f}.markdup.bam O=../complexity/${f}_complexity.txt ; done
 
 cd ${base_dir}
 }
@@ -678,37 +730,18 @@ cd ${base_dir}/markdup ; for f in `ls *markdup.bam| awk -F. '{print $1}'` ; do e
 
 cd ${base_dir}/gc_bias
 
-merg_samp=$(ls *_table_for_plot.txt | awk -F"-" '{print $1}'  | sort | uniq -c | awk '{if ($1>1) print $2}')
-echo $merg_samp
+#for f in `ls *_for_plot.txt | awk -F"sorted" '{print $1}'` ;do sed 's/ /\t/g' $f*table_for_plot.txt | sed "1s/^/\t${f}\n/" > lolo/${f}_for_plot_header.txt; done ;cd lolo ;  paste *_for_plot_header.txt | awk '{ for (i=1;i<=NF;i+=2) $i="" } 1' | awk '{print NR-2,$0}' > ${base_dir}/gc_bias/Full_table_for_plot.txt
 
-#for f in $merg_samp ; do join ${f}*_table_for_plot.txt > ${f}_joined.txt; done
-####
-####
-#### commented because it is breaking the script
-####
-####
-####if [ `ls ${merg_samp}*_table_for_plot.txt | wc -l` -eq 1 ]
-####then
-####    echo No files to merge
-####    for f in $merg_samp ; do cp ${merg_samp}*_table_for_plot.txt > ${f}_joined.txt; done  
-####elif [ `ls ${merg_samp}*_table_for_plot.txt | wc -l` -eq 2 ]
-####then
-####	for f in $merg_samp ; do join ${f}*_table_for_plot.txt > ${f}_joined.txt; done
-####elif [ `ls ${merg_samp}*_table_for_plot.txt | wc -l` -eq 3 ]
-####then
-####	for f in $merg_samp ; do join <(join ${f}-{1..2}*_table_for_plot.txt) ${f}-3*_table_for_plot.txt > ${f}_joined.txt ; done
-####elif [ `ls ${merg_samp}*_table_for_plot.txt | wc -l` -eq 4 ]
-####then
-####	for f in $merg_samp ; do join <(join ${f}-{1..2}*_table_for_plot.txt) <(join ${f}-{3..4}*_table_for_plot.txt) > ${f}_joined.txt ; done
-####fi
-####
-####
+mkdir temp;
+for f in `ls *_for_plot.txt | awk -F"sorted" '{print $1}'` ;do sed 's/ /\t/g' $f*table_for_plot.txt | sed "1s/^/GC\t${f}\n/" > temp/${f}_for_plot_header.txt; done ;cd temp ;  paste *_for_plot_header.txt | awk '{ for (i=1;i<=NF;i+=2) $i="" } 1' | awk '{print NR-2,$0}'| sed 's/_//g'| sed 's/  /\t/g' > ${base_dir}/gc_bias/Full_table_to_generate_plot.txt ; cd .. ; rm -r temp
 
-#for f in `ls *_joined.txt | awk -F_ '{print $1}'`; do echo GC stats for ${f}; cat ${f}*_joined.txt | awk -v princ=$st -v fin=$en '{if (NR>princ && NR<=fin+1) print $1,($2+$3+$4)/(NF-1)}' | awk 'function abs(v) {return v < 0 ? -v : v}{x[NR]=$1; y[NR]=$2; sx+=x[NR]; sy+=y[NR]; sxx+=x[NR]*x[NR]; sxy+=x[NR]*y[NR]; dev1+=1-y[NR]; meanabs+=abs(1-y[NR])}END{det=NR*sxx - sx*sx; a=(NR*sxy - sx*sy)/det;print "slope:"a, "Dev_from_1:"dev1, "AbsMean:"meanabs/NR}' > ${f}_GC_stats.txt ; done
 
-####
-####for f in `ls *_joined.txt | awk -F_ '{print $1}'`; do echo GC stats for ${f}; cat ${f}*_joined.txt | awk -v princ=$st -v fin=$en '{if (NR>princ && NR<=fin+1) print $1,($2+$3+$4)/(NF-1)}' | awk 'function abs(v) {return v < 0 ? -v : v} BEGIN { FS = "[ ,\t]+" } NF == 2 { x_sum += $1 ; y_sum += $2 ; xy_sum += $1*$2 ; x2_sum += $1*$1 ; num += 1 ; x[NR] = $1 ; y[NR] = $2 ; dev1+=1-y[NR]; meanabs+=abs(1-y[NR])} END { mean_x = x_sum / num ; mean_y = y_sum / num ; mean_xy = xy_sum / num ; mean_x2 = x2_sum / num ; slope = (mean_xy - (mean_x*mean_y)) / (mean_x2 - (mean_x*mean_x)) ; inter = mean_y - slope * mean_x ; for (i = num; i > 0; i--) {ss_total += (y[i] - mean_y)**2 ; ss_residual += (y[i] - (slope * x[i] + inter))**2} ; r2 = 1 - (ss_residual / ss_total) ; printf("Slope      :  %g\n", slope) ; printf("Intercept  :  %g\n", inter) ; printf("R-Squared  :  %g\n", r2) ; printf("Dev from 1 :  %g\n", dev1) ; printf("MeanAbs Val:  %g\n", meanabs/NR) }' > ${f}_GC_stats.txt; done
-####
+#Delete if existing file is present
+#rm CG_bias_all_samples.txt
+for f in `ls *for_plot.txt | awk -F"sorted" '{print $1}'`; do echo GC stats for ${f}; cat ${f}*for_plot.txt | awk -v princ=$st -v fin=$en '{if (NR>princ && NR<=fin+1) print $1,$2}' | awk -v sample=${f} 'function abs(v) {return v < 0 ? -v : v}{x[NR]=$1; y[NR]=$2; sx+=x[NR]; sy+=y[NR]; sxx+=x[NR]*x[NR]; sxy+=x[NR]*y[NR]; dev1+=1-y[NR]; meanabs+=abs(1-y[NR])}END{det=NR*sxx - sx*sx; a=(NR*sxy - sx*sy)/det;print sample"\t"a, "\t"dev1, "\t"meanabs}' >> CG_bias_all_samples.txt ; done; sed -i '1s/^/Sample\tSlope\tDeviation_from_1\tAbsolute_value\n/' CG_bias_all_samples.txt ; sed -i 's/_//g' CG_bias_all_samples.txt ; cat CG_bias_all_samples.txt
+
+#Mean abs(v)/NR	
+#for f in `ls *for_plot.txt | awk -F"sorted" '{print $1}'`; do echo GC stats for ${f}; cat ${f}*for_plot.txt | awk -v princ=$st -v fin=$en '{if (NR>princ && NR<=fin+1) print $1,$2}' | awk -v sample=${f} 'function abs(v) {return v < 0 ? -v : v}{x[NR]=$1; y[NR]=$2; sx+=x[NR]; sy+=y[NR]; sxx+=x[NR]*x[NR]; sxy+=x[NR]*y[NR]; dev1+=1-y[NR]; meanabs+=abs(1-y[NR])}END{det=NR*sxx - sx*sx; a=(NR*sxy - sx*sy)/det;print sample"\t"a, "\t"dev1, "\t"meanabs/NR}' >> CG_bias_all_samples.txt ; done; sed -i '1s/^/Sample\tSlope\tDeviation_from_1\tAbsolute_value\n/' CG_bias_all_samples.txt ; sed -i 's/_//g' CG_bias_all_samples.txt ; cat CG_bias_all_samples.txt
 
 }
 
@@ -739,10 +772,55 @@ Gen0Cov
 echo Debug ; cat ${base_dir}/genome_coverage/genome_0_coverage_table.txt
 echo Debug ; head ${base_dir}/coverage/*_bedgraph.bed
 
+
+
+function Cov_stats(){
+cd ${base_dir}
+mkdir genome_coverage-d
+echo Estimating genome coverage by base -d
+cd ${base_dir}/markdup
+for f in `ls *bam | awk -F. '{print $1"."$2}'`; do echo ${f}; bedtools genomecov -d -ibam ${f}.bam > ../genome_coverage-d/${f}_genome_cov-d.bed ; cut -f3 ../genome_coverage-d/${f}_genome_cov-d.bed| sort -n | 
+    awk '$1 ~ /^[0-9]*(\.[0-9]*)?$/ {
+    a[c++] = $1;
+    sum += $1;
+  }
+  END {
+    ave = sum / c;
+    if( (c % 2) == 1 ) {
+      median = a[ int(c/2) ];
+    } else {
+      median = ( a[c/2] + a[c/2-1] ) / 2;
+    }
+    OFS="\t";
+    { printf ("Total:\t""%'"'"'d\n", sum)}
+    { printf ("Count:\t""%'"'"'d\n", c)}
+    { printf ("Min:\t""%'"'"'d\n", a[0])}
+    { printf ("Max:\t""%'"'"'d\n", a[c-1])}
+    { printf ("Median:\t""%'"'"'d\n", median)}
+    { printf ("Mean:\t""%.2f\n", ave)}
+    a[NR]=$0}END{for (i in a)y+=(a[i]-(sum/NR))^2; printf ("SD:\t""%.3f\n",sqrt(y/NR))}'  > ../genome_coverage-d/${f}_Coverage_stats.txt; echo ;done
+}
+Cov_stats
+
+
+
 cd  ${base_dir}
 cp ${base_dir}/stats/stats_table.txt ${base_dir}/deliverables
-cp ${base_dir}/gc_bias/*_table_for_plot.txt ${base_dir}/deliverables
+cp ${base_dir}/gc_bias/Full_table_to_generate_plot.txt ${base_dir}/deliverables
 cp ${base_dir}/genome_coverage/genome_0_coverage_table.txt  ${base_dir}/deliverables
-#cp ${base_dir}/gc_bias/*joined.txt ${base_dir}/deliverables
-cp ${base_dir}/insert_size/*size_metrics.txt ${base_dir}/deliverables
-cp ${base_dir}/insert_size/*pdf ${base_dir}/deliverables
+cp ${base_dir}/gc_bias/CG_bias_all_samples.txt ${base_dir}/deliverables
+
+mkdir ${base_dir}/deliverables/other_files
+cp ${base_dir}/insert_size/*pdf ${base_dir}/deliverables/other_files
+cp ${base_dir}/genome_coverage-d/*_Coverage_stats.txt ${base_dir}/deliverables/other_files
+cp ${base_dir}/insert_size/*size_metrics.txt ${base_dir}/deliverables/other_files
+cp ${base_dir}/gc_bias/*_table_for_plot.txt ${base_dir}/deliverables/other_files
+
+
+if [ `which cowsay | wc -l ` -eq 1 ] ; then
+  cowsay Pipeline Complete
+  exit 0
+else
+   echo Pipeline Complete
+   exit 0
+fi
