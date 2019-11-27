@@ -1,4 +1,6 @@
+usage="
 Important Note:
+
 I used this script in sample names that contain '_S' in the name
 and used it to split first string to the left to get the sample name.  
 
@@ -11,7 +13,7 @@ USAGE:
         Required:
         [ -g Define genome. Available organisms: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo',
                                                  'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas',
-                                                 'Enterobacter' and 'Serratia' ]
+                                                 'Enterobacter', 'Serratia', 'Maize' and '8gen' ]
         [ -f Full path to reads directory ]
         [ -o Output Directory ]
 
@@ -20,5 +22,6 @@ USAGE:
         [ -e string to help filter files]
         [ -c Expected depth to subsample reads. i.e. '10', '5', '1', etc. Default: 10 (for 10x) ]
         [ -a Use all reads. No downsampling ]
+        [ -l Minimum length of reads after adapter trimming. Default: 90  ]
 
-
+"
