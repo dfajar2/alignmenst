@@ -15,7 +15,7 @@ export PATH=/media/software/picard/2.18.21/bin:${PATH}
 export PATH=/media/software/bwa/0.7.17/bin:$PATH
 # Export PERL5LIB for vcftools
 export PERL5LIB=/media/software/vcftools/0.1.17/share/perl/5.26.1:${PERL5LIB}
-
+export PATH=/usr/games:$PATH
 # clear
 
 
@@ -38,7 +38,8 @@ USAGE:
         Required:
         [ -g Define genome. Available organisms: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo',
                                                  'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas',
-                                                 'Enterobacter', 'Serratia', 'Maize' and '8gen' ]
+                                                 'Enterobacter', 'Serratia', 'Maize', '8gen', 
+						 '9gen', 'Seqwell_all_genomes' and 'Seqwell_all_genomes_renamed']
         [ -f Full path to reads directory ]
         [ -o Output Directory ]
 
@@ -48,6 +49,7 @@ USAGE:
         [ -c Expected depth to subsample reads. i.e. '10', '5', '1', etc. Default: 10 (for 10x) ]
         [ -a Use all reads. No downsampling ]
 	[ -l Minimum length of reads after adapter trimming. Default: 90  ]
+	[ -v Estimate full coverage stats ]
 
 "
 e="."
@@ -56,6 +58,7 @@ c=10
 s=0
 a=0
 l=90
+v=0
 
 while getopts "g:f:o:e:c:l:as" options; do
         case "${options}" in
@@ -76,6 +79,8 @@ while getopts "g:f:o:e:c:l:as" options; do
                 a)
                         c=99999999 
 			a=1 ;;
+		v)
+			v=1 ;;
                 *)
                         echo ${usage} ;;
         esac
@@ -87,10 +92,10 @@ if [ -z "${g}" ] || [ -z "${f}" ] || [ -z "${o}" ] ; then
 
 fi
 
-if [ "$g" != "Human" ] && [ "$g" != "St43300" ] && [ "$g" != "Ecoli" ] && [ "$g" != "Staph" ] && [ "$g" != "Rhodo" ] && [ "$g" != "Rhodo241" ] &&[ "$g" != "Taq" ] && [ "$g" != "Salmonella" ] && [ "$g" != "Pseudomonas" ] && [ "$g" != "Enterobacter" ] && [ "$g" != "Serratia" ] && [ "$g" != "Maize" ] && [ "$g" != "8gen" ]
+if [ "$g" != "Human" ] && [ "$g" != "St43300" ] && [ "$g" != "Ecoli" ] && [ "$g" != "Staph" ] && [ "$g" != "Rhodo" ] && [ "$g" != "Rhodo241" ] &&[ "$g" != "Taq" ] && [ "$g" != "Salmonella" ] && [ "$g" != "Pseudomonas" ] && [ "$g" != "Enterobacter" ] && [ "$g" != "Serratia" ] && [ "$g" != "Maize" ] && [ "$g" != "8gen" ] && [ "$g" != "9gen" ] && [ "$g" != "Seqwell_all_genomes" ] && [ "$g" != "Seqwell_all_genomes_renamed" ]
 then
 	echo ERROR - Invalid Genome \(-g\). ${g} genome not available.
-	echo Valid options: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo', 'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas', 'Enterobacter', 'Serratia' and '8gen'
+	echo Valid options: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo', 'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas', 'Enterobacter', 'Serratia', '8gen', '9gen', 'Seqwell_all_genomes' and 'Seqwell_all_genomes_renamed'
 	echo ; echo --------; echo "$usage"; exit 1; 
 fi
 
@@ -209,6 +214,27 @@ then
     st=35 ;
     en=80 ;
     echo ${genome} genome - $gen_size bases. $fastq_lines lines will be selected. ;
+elif [ ${genome} = "9gen" ] ;
+then
+    reference="/media/data/diego/work/Fidelity/reference/allgenomes_plus_klebsiella.fasta"
+    gen_size=41114199 ;
+    fastq_lines=$(echo 548190*${c} | bc) ;
+    st=21 ;
+    en=81 ;
+elif [ ${genome} = "Seqwell_all_genomes" ];
+then
+    reference="/media/data/diego/work/Seqwell/20191206_WGS_plexWell/reference/All_genomes.fasta"
+    gen_size=7831775142 ;
+    fastq_lines=$(echo 104423668*${c} | bc) ;
+    st=21 ;
+    en=81 ;
+elif [ ${genome} = "Seqwell_all_genomes_renamed" ];
+then
+    reference="/media/data/diego/work/Seqwell/20191206_WGS_plexWell/reference/renamed/All_genomes_renamed.fasta"
+    gen_size=7831775142 ;
+    fastq_lines=$(echo 104423668*${c} | bc) ;
+    st=21 ;
+    en=81 ;
 else
 	echo "No valid reference."; exit 1
 fi
@@ -252,6 +278,11 @@ echo expression = ${exp}
 echo Lines to filter = ${fastq_lines}
 echo ${genome} genome - $gen_size bases. $fastq_lines lines will be selected.
 echo Minimum length of reads after trimming = ${min_length} bases 
+
+if [ $v -eq 1 ]
+then
+	echo Analysis will estimate FULL coverage stats
+fi
 
 #Check paths
 if [ ! -f ${reference} ] || [ ! -d ${reads} ] ;
@@ -382,7 +413,7 @@ fi
 	#
 mkdir ${output_dir} 
 cd ${output_dir}
-mkdir -p deliverables/
+mkdir -p deliverables/other_files
 base_dir=$(pwd)
 echo ${base_dir}
 
@@ -692,6 +723,19 @@ cd ${base_dir}
 mkdir markdup; cd markdup
 cd ${base_dir}/alignments ; for f in `ls *bam| awk -F. '{print $1}'`; do echo ; echo ${f};  java -jar /media/software/picard/2.18.21/bin/picard.jar MarkDuplicates INPUT=${f}.bam  OUTPUT=../markdup/${f}.markdup.bam METRICS_FILE=../markdup/${f}_metrics.txt REMOVE_DUPLICATES=false VALIDATION_STRINGENCY=LENIENT ; done
 cd ${base_dir}/markdup ; for d in `ls *markdup.bam`; do echo ${d};  samtools index ${d}; done
+
+if [ $s -eq 1  ]
+then
+	echo Counting chimeric inserts
+	echo Filtering Mapped-Correctly_oriented-Bad_insert_size
+	mkdir chimeric
+	for f in `ls *markdup.bam | awk -F".bam" '{print $1}'` ; do samtools view -H ${f}.bam > chimeric/${f}.sam ; samtools view ${f}.bam | awk '{ if (($9>0 && $9<50) || ($9>1000 && $9<=5000)) print}' >> chimeric/${f}.sam ; done
+	cd chimeric
+	echo Counting Mapped-Correctly_oriented-Bad_insert_size
+	for f in `ls *sam | awk -F"_sorted.markdup.sam" '{print $1}'` ; do echo "lolo"$f; /media/software/samtools/1.9/bin/samtools view ${f}_sorted.markdup.sam| awk '{if (($9>0 && $9<50) || ($9>1000 && $9 <=5000)) print }' | wc -l ; done | tr "\n" "\t" | sed 's/lolo/\n/g' | grep -v ^$ > chimeric_reads.txt
+	cp chimeric_reads.txt ../../deliverables/
+fi
+
 cd ${base_dir}
 } 
 
@@ -702,7 +746,7 @@ function Stats() {
 mkdir stats
 cd ${base_dir}/markdup
 for f in `ls *bam`; do echo ; echo Stats for sample ${f}; samtools stats ${f}> ../stats/${f}.stats ; done
-cd ${base_dir}/stats; for f in `ls *stats`; do echo ${f} ; grep ^SN ${f} | grep -e "sequences:" -e "reads mapped:" -e "bases mapped (cigar):" -e "insert size average:" -e "insert size standard deviation:" -e "reads duplicated:"; echo lolo; done | tr "\n" "\t" | sed 's/lolo\t/lolo\n/g'| sed 's/\tlolo//g' | awk -F"\t" -v gensize=$gen_size 'BEGIN{printf "Sample\tGen_size\tCoverage \tTotalReads\tReads_mapped\tPct\tBases_mapped_(cigar)\tReads_duplicated\tInsert_size_average\tInsert_size_standard_deviation\n"}{printf"%s\t%d\t%.2fx\t%d\t%d\t%.2f\t%d\t%d\t%d\t%d\n",$1,gensize,((($4)*150)/gensize),$4,$13,($13/$4)*100,$20,$16,$24,$27}' | sed 's/_sorted.markdup.bam.stats//g' > stats_table.txt
+cd ${base_dir}/stats; for f in `ls *stats`; do echo ${f} ; grep ^SN ${f} | grep -e "sequences:" -e "reads mapped:" -e "bases mapped (cigar):" -e "insert size average:" -e "insert size standard deviation:" -e "reads duplicated:"; echo lolo; done | tr "\n" "\t" | sed 's/lolo\t/lolo\n/g'| sed 's/\tlolo//g' | awk -F"\t" -v gensize=$gen_size 'BEGIN{printf "Sample\tGen_size\tCoverage \tTotalReads\tReads_mapped\tPct\tBases_mapped_(cigar)\tReads_duplicated\tInsert_size_average\n"}{printf"%s\t%d\t%.2fx\t%d\t%d\t%.2f\t%d\t%d\n",$1,gensize,((($4)*150)/gensize),$4,$13,($13/$4)*100,$20,$16}' | sed 's/_sorted.markdup.bam.stats//g' > stats_table.txt
 
 
 #awk -F"\t" 'BEGIN{printf "Sample\tReads_mapped\tBases_mapped_(cigar)\tInsert_size_average\tInsert_size_standard_deviation\tReads_duplicated\n"}{printf "%s\t%d\t%d\t%d\t%.2f\t%d\n",$1,$4,$11,$15,$NF,$7}' > stats_table.txt
@@ -710,11 +754,22 @@ cd ${base_dir}/stats; for f in `ls *stats`; do echo ${f} ; grep ^SN ${f} | grep 
 cd ${base_dir}/markdup
 mkdir ../insert_size
 for f in `ls *.bam | awk -F"." '{print $1}'` ; do echo Collect Insert Size Metric for sample ${f} ; java -jar /media/software/picard/2.18.21/bin/picard.jar CollectInsertSizeMetrics I=${f}.markdup.bam O=../insert_size/${f}_size_metrics.txt H=../insert_size/${f}.pdf ; done
+cd ../insert_size
+for f in `ls *_sorted_size_metrics.txt | awk -F"_sorted_size_metrics.txt" '{print $1}'`; do echo lolo${f} ; head -n8 ${f}_sorted_size_metrics.txt | tail -n1 | awk '{printf "%.1f\t%.1f", $6,$7}'; done | tr "\n" "\t" | sed 's/lolo/\n/g' | grep -v ^$ | sed  '1i\Sample\tInsert_Size\tStd_Dev' > insert_size.txt
+
+
+
 
 # Uncomment if you need to estimate library complexity
-#mkdir ../complexity 
-#for f in `ls *.bam | awk -F"." '{print $1}'` ; do echo Library Complexity for sample ${f} ; java -jar /media/software/picard/2.18.21/bin/picard.jar EstimateLibraryComplexity I=${f}.markdup.bam O=../complexity/${f}_complexity.txt ; done
+cd ${base_dir}/markdup
+mkdir ../complexity 
+for f in `ls *.bam | awk -F"." '{print $1}'` ; do echo Library Complexity for sample ${f} ; java -jar /media/software/picard/2.18.21/bin/picard.jar EstimateLibraryComplexity I=${f}.markdup.bam O=../complexity/${f}_complexity.txt ; done
 
+cp ${base_dir}/stats/stats_table.txt ${base_dir}/deliverables
+cp ${base_dir}/insert_size/insert_size.txt ${base_dir}/deliverables
+cp ${base_dir}/insert_size/*pdf ${base_dir}/deliverables/other_files
+cp ${base_dir}/insert_size/*size_metrics.txt ${base_dir}/deliverables/other_files
+cp ${base_dir}/complexity/*complexity.txt ${base_dir}/deliverables/other_files
 cd ${base_dir}
 }
 
@@ -743,6 +798,9 @@ for f in `ls *for_plot.txt | awk -F"sorted" '{print $1}'`; do echo GC stats for 
 #Mean abs(v)/NR	
 #for f in `ls *for_plot.txt | awk -F"sorted" '{print $1}'`; do echo GC stats for ${f}; cat ${f}*for_plot.txt | awk -v princ=$st -v fin=$en '{if (NR>princ && NR<=fin+1) print $1,$2}' | awk -v sample=${f} 'function abs(v) {return v < 0 ? -v : v}{x[NR]=$1; y[NR]=$2; sx+=x[NR]; sy+=y[NR]; sxx+=x[NR]*x[NR]; sxy+=x[NR]*y[NR]; dev1+=1-y[NR]; meanabs+=abs(1-y[NR])}END{det=NR*sxx - sx*sx; a=(NR*sxy - sx*sy)/det;print sample"\t"a, "\t"dev1, "\t"meanabs/NR}' >> CG_bias_all_samples.txt ; done; sed -i '1s/^/Sample\tSlope\tDeviation_from_1\tAbsolute_value\n/' CG_bias_all_samples.txt ; sed -i 's/_//g' CG_bias_all_samples.txt ; cat CG_bias_all_samples.txt
 
+cp ${base_dir}/gc_bias/Full_table_to_generate_plot.txt ${base_dir}/deliverables
+cp ${base_dir}/gc_bias/CG_bias_all_samples.txt ${base_dir}/deliverables
+cp ${base_dir}/gc_bias/*_table_for_plot.txt ${base_dir}/deliverables/other_files
 }
 
 echo GCbias 
@@ -765,6 +823,8 @@ mkdir coverage
 cd ${base_dir}/markdup
 echo Creating bedfile
 for f in `ls *markdup.bam | awk -F. '{print $1"."$2}'`; do echo $f ; genomeCoverageBed -bg -trackline -ibam ${f}.bam > ../coverage/${f}_bedgraph.bed ;done
+
+cp ${base_dir}/genome_coverage/genome_0_coverage_table.txt  ${base_dir}/deliverables
 }
 
 echo Gen0Cov
@@ -799,23 +859,14 @@ for f in `ls *bam | awk -F. '{print $1"."$2}'`; do echo ${f}; bedtools genomecov
     { printf ("Median:\t""%'"'"'d\n", median)}
     { printf ("Mean:\t""%.2f\n", ave)}
     a[NR]=$0}END{for (i in a)y+=(a[i]-(sum/NR))^2; printf ("SD:\t""%.3f\n",sqrt(y/NR))}'  > ../genome_coverage-d/${f}_Coverage_stats.txt; echo ;done
-}
-Cov_stats
 
-
-
-cd  ${base_dir}
-cp ${base_dir}/stats/stats_table.txt ${base_dir}/deliverables
-cp ${base_dir}/gc_bias/Full_table_to_generate_plot.txt ${base_dir}/deliverables
-cp ${base_dir}/genome_coverage/genome_0_coverage_table.txt  ${base_dir}/deliverables
-cp ${base_dir}/gc_bias/CG_bias_all_samples.txt ${base_dir}/deliverables
-
-mkdir ${base_dir}/deliverables/other_files
-cp ${base_dir}/insert_size/*pdf ${base_dir}/deliverables/other_files
 cp ${base_dir}/genome_coverage-d/*_Coverage_stats.txt ${base_dir}/deliverables/other_files
-cp ${base_dir}/insert_size/*size_metrics.txt ${base_dir}/deliverables/other_files
-cp ${base_dir}/gc_bias/*_table_for_plot.txt ${base_dir}/deliverables/other_files
+}
 
+if [ $v -eq 1 ]
+then
+	Cov_stats
+fi
 
 if [ `which cowsay | wc -l ` -eq 1 ] ; then
   cowsay Pipeline Complete
