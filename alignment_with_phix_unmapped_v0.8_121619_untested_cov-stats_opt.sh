@@ -786,7 +786,7 @@ function GCbias(){
 cd ${base_dir}
 mkdir gc_bias
 
-cd ${base_dir}/markdup ; for f in `ls *markdup.bam| awk -F. '{print $1}'` ; do echo; java -jar /media/software/picard/2.18.21/bin/picard.jar CollectGcBiasMetrics I=${f}.markdup.bam O=../gc_bias/${f}_gc_bias_metrics.txt CHART=../gc_bias/${f}_gc_bias_metrics.pdf S=../gc_bias/${f}_summary_metrics.txt R=${ref_path}/${ref_name} ; echo; echo Creating table for GC plot - Sample ${f}; cat ../gc_bias/${f}_gc_bias_metrics.txt | awk '{if (/All/) print $4,$8}' > ../gc_bias/${f}_table_for_plot.txt ; done
+cd ${base_dir}/markdup ; for f in `ls *markdup.bam| awk -F. '{print $1}'` ; do echo; java -jar /media/software/picard/2.18.21/bin/picard.jar CollectGcBiasMetrics I=${f}.markdup.bam O=../gc_bias/${f}_gc_bias_metrics.txt CHART=../gc_bias/${f}_gc_bias_metrics.pdf S=../gc_bias/${f}_summary_metrics.txt R=${ref_path}/${ref_name} ; echo; echo Creating table for GC plot - Sample ${f}; cat ../gc_bias/${f}_gc_bias_metrics.txt | awk '{if (/^All Reads/) print $4,$8}' > ../gc_bias/${f}_table_for_plot.txt ; done
 
 cd ${base_dir}/gc_bias
 
