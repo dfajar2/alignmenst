@@ -18,7 +18,7 @@ USAGE:
     
        Optional:
         [ -s Use BWA instead of Bowtie2 (Default) ]
-        [ -r Use if only want to use R1 from pair end reads. ]
+        [ -r If only want to use R1 from pair end reads. ]
         [ -e string to help filter files]
         [ -c Expected depth to subsample reads. i.e. '10', '5', '1', etc. Default: 10 (for 10x) ]
         [ -a Use all reads. No downsampling ]
