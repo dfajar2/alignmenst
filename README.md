@@ -5,6 +5,7 @@ I used this script in sample names that contain '_' in the name
 and used it to split first string to the left to get the sample name.  
 
 ===============
+
 USAGE:
 
     $ /path/to/script.sh OPTIONS
