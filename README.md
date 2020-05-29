@@ -1,22 +1,18 @@
-Important Note:
-I used this script in sample names that contain '_S' in the name
-and used it to split first string to the left to get the sample name.  
-
-===============
+Align and generate metrics. 
 
 USAGE:
 
     $ /path/to/script.sh OPTIONS
-    
-    Required:
+
+        Required:
         [ -g Define genome. Available organisms: 'Human', 'Ecoli', 'St43300', 'Staph', 'Rhodo',
                                                  'Rhodo241', 'Taq', 'Salmonella', 'Pseudomonas',
                                                  'Enterobacter', 'Serratia', 'Maize', '8gen', 
                                                  '9gen', 'Seqwell_all_genomes' and 'Seqwell_all_genomes_renamed']
         [ -f Full path to reads directory ]
         [ -o Output Directory ]
-    
-       Optional:
+
+        Optional:
         [ -s Use BWA instead of Bowtie2 (Default) ]
         [ -r If only want to use R1 from pair end reads. ]
         [ -e string to help filter files]
